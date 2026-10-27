@@ -18,7 +18,7 @@ def email_configuration_error():
     ):
         return "Email is not configured: set DEFAULT_FROM_EMAIL to a verified Brevo sender."
     return ""
-
+    
 
 def _send_brevo_email(subject, message, recipients):
     api_key = getattr(settings, "BREVO_API_KEY", "")
@@ -66,6 +66,7 @@ def _send_brevo_email(subject, message, recipients):
         ) from None
 
     return 1
+
 
 
 def send_test_email(recipient):
