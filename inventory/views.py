@@ -113,17 +113,25 @@ def resend_signup_confirmation(request):
                 email__iexact=email,
                 is_active=False,
             ).first()
-            if (
-                user is not None
-                and email.casefold() in settings.AUTHORIZED_SIGNUP_EMAILS
-            ):
+            if user is None:
+                logger.error(
+                    "DEBUG: Confirmation resend skipped; no inactive account found."
+                )
+            elif email.casefold() not in settings.AUTHORIZED_SIGNUP_EMAILS:
+                logger.error(
+                    "DEBUG: Confirmation resend skipped; email is not authorized."
+                )
+            else:
                 try:
                     _send_signup_confirmation(request, user)
-                except (BadHeaderError, OSError, RuntimeError, smtplib.SMTPException):
-                    logger.exception(
-                        "Signup confirmation resend failed for user_id=%s.",
-                        user.pk,
+                    logger.warning(
+                        "DEBUG: Confirmation email send function completed."
                     )
+                except Exception:
+                    logger.exception(
+                        "DEBUG: Confirmation email sending failed."
+                    )
+
             messages.info(
                 request,
                 "If this is an approved address with a pending account, a confirmation email may be sent. If you do not receive one, check the address and try again later.",
