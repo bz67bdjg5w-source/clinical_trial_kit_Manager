@@ -1,0 +1,8 @@
+.env
+*.sqlite3
+.venv/
+*.log
+__pycache__/
+*.py[cod]
+staticfiles/
+deploy/mac/com.clinicaltrialkitmanager.expiry-reminders.plist

@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block title %}Sign in · Study Kit Tracker{% endblock %}
+{% block content %}
+<div class="card" style="max-width:440px;margin:40px auto">
+<h1>Sign in</h1><p class="muted">Use an individual development account. Never share credentials.</p>
+<form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Sign in</button></form>
+<p class="muted">First time here? <a href="{% url 'signup' %}">Sign up</a></p>
+</div>{% endblock %}

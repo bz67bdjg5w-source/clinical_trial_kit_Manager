@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% block title %}Stock history · Study Kit Tracker{% endblock %}
+{% block content %}
+<h1>Stock change history</h1>
+<div class="card table-wrap"><table>
+  <tr><th>Study</th><th>Lot</th><th>Previous quantity</th><th>New quantity</th><th>Quantity used</th><th>Changed by</th><th>Reason</th><th>When</th></tr>
+  {% for change in changes %}
+  <tr>
+    <td>{{ change.kit_lot.kit_name }}</td>
+    <td>{{ change.kit_lot.lot_number }}</td>
+    <td>{{ change.previous_quantity|default_if_none:"New lot" }}</td>
+    <td>{{ change.new_quantity }}</td>
+    <td>{{ change.quantity_used|default_if_none:"N/A" }}</td>
+    <td>{{ change.changed_by.username }}</td>
+    <td>{{ change.reason }}</td>
+    <td>{{ change.changed_at }}</td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="8">No stock changes recorded.</td></tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

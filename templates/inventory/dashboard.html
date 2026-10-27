@@ -1,0 +1,49 @@
+{% extends "base.html" %}{% block title %}Dashboard · Study Kit Tracker{% endblock %}
+{% block content %}
+<h1>Dashboard</h1><p class="muted">Overview of inventory risks.</p>
+{% if perms.inventory.can_manage_inventory %}<form method="post" action="{% url 'send_test_email' %}">{% csrf_token %}<button type="submit">Send one-time test email</button></form><p class="muted">Daily expiry reminders run automatically when the scheduler is installed. This button only tests your email settings.</p>{% endif %}
+<div class="grid">
+<div class="card"><div class="muted">Expired lots</div><div class="metric">{{ expired|length }}</div><span class="pill danger">Review immediately</span></div>
+<div class="card"><div class="muted">Lots expiring in 90 days</div><div class="metric">{{ expiring|length }}</div><span class="pill warning">Plan replacement</span></div>
+<div class="card"><div class="muted">Low-stock lots</div><div class="metric">{{ low_stock|length }}</div><span class="pill warning">Check reorder</span></div>
+</div>
+<a class="dashboard-quick-update" href="{% url 'quick_update_stock' %}" aria-label="Open Lab Kit Update">
+  <svg width="20" height="20" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+    <rect x="1" y="1" width="7" height="7" rx="1" fill="currentColor"/>
+    <rect x="10" y="1" width="7" height="7" rx="1" fill="currentColor"/>
+    <rect x="1" y="10" width="7" height="7" rx="1" fill="currentColor"/>
+    <rect x="10" y="10" width="7" height="7" rx="1" fill="currentColor"/>
+  </svg>
+  <span>Lab Kit Update</span>
+</a>
+<style>
+  .dashboard-quick-update {
+    min-height: 42px;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 0 16px;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border-radius: 8px;
+    background: #039855;
+    color: white;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .dashboard-quick-update:hover { background: #027a48; }
+  .dashboard-quick-update:focus-visible {
+    outline: 3px solid #84caff;
+    outline-offset: 3px;
+  }
+  @media (max-width: 480px) {
+    .dashboard-quick-update { min-height: 44px; }
+  }
+</style>
+<div class="card"><h2>Expiring lots</h2>{% if expiring or expired %}<div class="table-wrap"><table><tr><th>Study name</th><th>Lot</th><th>Expiry</th><th>Quantity</th><th>Days left</th></tr>
+{% for k in expired %}<tr><td>{{ k.kit_name }} <a href="{% url 'edit_kit' k.pk %}">Edit</a></td><td>{{ k.lot_number }}</td><td>{{ k.expiry_date }}</td><td>{{ k.quantity_available }}</td><td><span class="pill danger">Expired</span></td></tr>{% endfor %}
+{% for k in expiring %}<tr><td>{{ k.kit_name }} <a href="{% url 'edit_kit' k.pk %}">Edit</a></td><td>{{ k.lot_number }}</td><td>{{ k.expiry_date }}</td><td>{{ k.quantity_available }}</td><td><span class="pill warning">{{ k.days_to_expiry }} days</span></td></tr>{% endfor %}</table></div>{% else %}<p class="muted">No expiry alerts.</p>{% endif %}</div>
+<div class="card"><h2>Low stock</h2><p class="muted">Low stock means {{ low_stock_threshold }} or fewer kits available.</p>{% if low_stock %}<div class="table-wrap"><table><tr><th>Study name</th><th>Lot</th><th>Available</th></tr>{% for k in low_stock %}<tr><td>{{ k.kit_name }}{% if perms.inventory.can_manage_inventory %} <a href="{% url 'edit_kit' k.pk %}">Edit</a>{% endif %}</td><td>{{ k.lot_number }}</td><td>{{ k.quantity_available }}</td></tr>{% endfor %}</table></div>{% else %}<p class="muted">No low-stock alerts.</p>{% endif %}</div>
+{% endblock %}

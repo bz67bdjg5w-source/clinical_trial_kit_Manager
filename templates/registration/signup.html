@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% block title %}Sign up · Study Kit Tracker{% endblock %}
+{% block content %}
+<div class="card" style="max-width:440px;margin:40px auto">
+<h1>Create your account</h1>
+<p class="muted">Register with your individual account. New accounts do not receive inventory-management permissions.</p>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Create account</button>
+</form>
+<p class="muted">Already signed up but need a new confirmation link? <a href="{% url 'resend_signup_confirmation' %}">Resend confirmation email</a></p>
+<p class="muted">Already registered? <a href="{% url 'login' %}">Sign in</a></p>
+</div>
+{% endblock %}

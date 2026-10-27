@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% block title %}Resend confirmation · Study Kit Tracker{% endblock %}
+{% block content %}
+<div class="card" style="max-width:440px;margin:40px auto">
+  <h1>Resend confirmation email</h1>
+  <p class="muted">Enter the approved email address used to register. If an eligible unconfirmed account exists, we will send another link.</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Send confirmation link</button>
+  </form>
+</div>
+{% endblock %}

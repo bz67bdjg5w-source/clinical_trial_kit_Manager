@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% block title %}Delete kit lot · Study Kit Tracker{% endblock %}
+{% block content %}
+<div class="card" style="max-width:600px">
+  <h1>Delete kit lot</h1>
+  <p>Delete <strong>{{ kit.kit_name }} / {{ kit.lot_number }}</strong> from your workspace? This also removes its stock-change history and expiry-reminder records.</p>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit">Confirm delete</button>
+    <a href="{% url 'kit_list' %}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

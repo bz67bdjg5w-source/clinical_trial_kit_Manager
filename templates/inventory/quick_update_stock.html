@@ -1,0 +1,67 @@
+{% extends "base.html" %}{% block title %}Quick Update Stock · Study Kit Tracker{% endblock %}
+{% block content %}
+<h1>Quick Update Stock</h1>
+<div class="card" style="max-width:560px">
+  <form method="post" id="quick-stock-form">
+    {% csrf_token %}
+    <input type="hidden" name="submission_token" value="{{ submission_token }}">
+
+    <label for="{{ form.kit.id_for_label }}">{{ form.kit.label }}</label>
+    <select name="{{ form.kit.html_name }}" id="{{ form.kit.id_for_label }}" required>
+      <option value="">Select a kit lot</option>
+      {% for kit in form.fields.kit.queryset %}
+      <option value="{{ kit.pk }}" data-current-stock="{{ kit.quantity_available }}" {% if selected_kit_id == kit.pk|stringformat:"s" %}selected{% endif %}>{{ kit.kit_name }} · Lot {{ kit.lot_number }} · {{ kit.quantity_available }} available</option>
+      {% endfor %}
+    </select>
+    {% for error in form.kit.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+
+    <p><strong>Current stock:</strong> <span id="current-stock">Select a kit lot</span></p>
+    <label for="{{ form.quantity_used.id_for_label }}">{{ form.quantity_used.label }}</label>
+    {{ form.quantity_used }}
+    {% for error in form.quantity_used.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+
+    <p><strong>Remaining stock preview:</strong> <span id="remaining-stock">Select a kit lot</span></p>
+    <label for="{{ form.reason.id_for_label }}">{{ form.reason.label }} <span class="muted">(optional)</span></label>
+    {{ form.reason }}
+    {% for error in form.reason.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+
+    <button type="submit">Submit Update</button>
+    <a href="{% url 'dashboard' %}" style="margin-left:8px">Cancel</a>
+  </form>
+</div>
+<style>.field-error { color:#b42318; font-size:13px; }</style>
+<script>
+  const kitSelect = document.getElementById("{{ form.kit.id_for_label }}");
+  const quantityInput = document.getElementById("{{ form.quantity_used.id_for_label }}");
+  const currentStock = document.getElementById("current-stock");
+  const remainingStock = document.getElementById("remaining-stock");
+  const updateStockPreview = () => {
+    const option = kitSelect.selectedOptions[0];
+    const stock = option && option.dataset.currentStock;
+    if (stock === undefined) {
+      quantityInput.removeAttribute("max");
+      currentStock.textContent = "Select a kit lot";
+      remainingStock.textContent = "Select a kit lot";
+      return;
+    }
+    quantityInput.max = stock;
+    currentStock.textContent = stock;
+    const used = Number(quantityInput.value);
+    remainingStock.textContent = Number.isInteger(used) && used > 0
+      ? Number(stock) - used
+      : stock;
+  };
+  kitSelect.addEventListener("change", updateStockPreview);
+  quantityInput.addEventListener("input", updateStockPreview);
+  updateStockPreview();
+  document.getElementById("quick-stock-form").addEventListener("submit", (event) => {
+    if (!event.currentTarget.reportValidity()) {
+      event.preventDefault();
+      return;
+    }
+    const submitButton = event.currentTarget.querySelector('[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.textContent = "Submitting...";
+  });
+</script>
+{% endblock %}
