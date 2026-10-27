@@ -54,11 +54,11 @@ def _send_brevo_email(subject, message, recipients):
                 raise RuntimeError(
                     f"Brevo returned unexpected status {response.status}."
                 )
-    except urllib.error.HTTPError as exc:
-        raise RuntimeError(
-            f"Brevo rejected the email request (HTTP {exc.code}). "
-            "Check the API key, sender verification, and recipient."
-        ) from None
+   except urllib.error.HTTPError as exc:
+    details = exc.read().decode("utf-8", errors="replace")
+    raise RuntimeError(
+        f"Brevo rejected the email request (HTTP {exc.code}): {details}"
+    ) from None
     except (urllib.error.URLError, TimeoutError) as exc:
         raise RuntimeError(
             "Could not connect to Brevo's email API. Check the network "
