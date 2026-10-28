@@ -1,0 +1,38 @@
+
+name: Weekly Kit Alerts
+
+on:
+  schedule:
+    # Every Monday at 8:00 AM Malaysia time (UTC+8)
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+
+jobs:
+  send-alerts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+      DJANGO_DEBUG: "False"
+      DJANGO_ALLOWED_HOSTS: "study-kit-manager.onrender.com"
+      BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+      DEFAULT_FROM_EMAIL: ${{ secrets.DEFAULT_FROM_EMAIL }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Send weekly kit alerts
+        run: python manage.py send_kit_alerts
