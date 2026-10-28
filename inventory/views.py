@@ -84,7 +84,6 @@ def verify_signup(request, uidb64, token):
     if (
         user is not None
         and not user.is_active
-        and user.email.casefold() in settings.AUTHORIZED_SIGNUP_EMAILS
         and default_token_generator.check_token(user, token)
     ):
         if request.method == "GET":
@@ -116,10 +115,6 @@ def resend_signup_confirmation(request):
             if user is None:
                 logger.error(
                     "DEBUG: Confirmation resend skipped; no inactive account found."
-                )
-            elif email.casefold() not in settings.AUTHORIZED_SIGNUP_EMAILS:
-                logger.error(
-                    "DEBUG: Confirmation resend skipped; email is not authorized."
                 )
             else:
                 try:

@@ -23,10 +23,8 @@ class SignUpForm(UserCreationForm):
         email = self.cleaned_data["email"].strip()
         user_model = get_user_model()
         if user_model._default_manager.filter(email__iexact=email).exists():
-            raise forms.ValidationError("An account with that email address already exists.")
-        if email.casefold() not in settings.AUTHORIZED_SIGNUP_EMAILS:
             raise forms.ValidationError(
-                "This email address is not approved for registration. Contact your site administrator."
+                "An account with that email address already exists."
             )
         return email
 
