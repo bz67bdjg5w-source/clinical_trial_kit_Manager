@@ -1,20 +1,24 @@
+
 import logging
 from datetime import timedelta
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
+
 from inventory.email_utils import (
     email_configuration_error,
     notification_email_for_user,
     send_expiry_reminder,
+    send_low_stock_notification,
 )
 from inventory.models import ExpiryReminder, KitLot
 
 logger = logging.getLogger("inventory.alerts")
 
+
 class Command(BaseCommand):
-    help = "Send each inventory manager one reminder per kit expiry date, up to 30 days before expiry."
+    help = "Send weekly expiry and low-stock reminders."
 
     def handle(self, *args, **options):
         configuration_error = email_configuration_error()
@@ -22,81 +26,102 @@ class Command(BaseCommand):
             raise CommandError(configuration_error)
 
         today = timezone.localdate()
-        expiring_kits = KitLot.objects.filter(
+        now = timezone.now()
+        weekly_cutoff = now - timedelta(days=7)
+
+        kits = KitLot.objects.filter(
             active=True,
             owner__is_active=True,
-            expiry_date__gte=today,
             expiry_date__lte=today + timedelta(days=30),
         ).select_related("owner").order_by("expiry_date")
+
+        expiry_sent = 0
+        stock_sent = 0
         failures = 0
-        sent_count = 0
         missing_addresses = 0
 
-        for kit in expiring_kits:
+        for kit in kits:
             recipient = kit.owner
             email = notification_email_for_user(recipient)
+
             if not email:
                 missing_addresses += 1
                 logger.error(
-                    "Expiry reminder skipped: kit_lot_id=%s owner_user_id=%s has no valid active email address.",
-                    kit.pk,
-                    recipient.pk,
-                )
-                self.stderr.write(
-                    f"Kit lot {kit.pk} owner user_id={recipient.pk} has no valid email address; reminder was not sent."
+                    "No valid email for kit_lot_id=%s owner_user_id=%s",
+                    kit.pk, recipient.pk,
                 )
                 continue
 
-            with transaction.atomic():
-                reminder, _ = ExpiryReminder.objects.get_or_create(
-                    kit_lot=kit,
-                    recipient=recipient,
-                    expiry_date=kit.expiry_date,
-                )
-                reminder = ExpiryReminder.objects.select_for_update().get(pk=reminder.pk)
-                if reminder.sent_at is not None:
-                    continue
+            # Expiry reminder: repeat weekly for the same lot and expiry date.
+            try:
+                with transaction.atomic():
+                    reminder, _ = ExpiryReminder.objects.get_or_create(
+                        kit_lot=kit,
+                        recipient=recipient,
+                        expiry_date=kit.expiry_date,
+                    )
+                    reminder = ExpiryReminder.objects.select_for_update().get(
+                        pk=reminder.pk
+                    )
 
-                reminder.attempt_count += 1
-                reminder.last_attempt_at = timezone.now()
-                reminder.last_error = ""
-                reminder.save(update_fields=["attempt_count", "last_attempt_at", "last_error"])
+                    if (
+                        reminder.sent_at is None
+                        or reminder.sent_at <= weekly_cutoff
+                    ):
+                        reminder.attempt_count += 1
+                        reminder.last_attempt_at = now
+                        reminder.last_error = ""
+                        reminder.save(update_fields=[
+                            "attempt_count", "last_attempt_at", "last_error"
+                        ])
+
+                        try:
+                            accepted = send_expiry_reminder(kit, recipient)
+                            if accepted != 1:
+                                raise RuntimeError(
+                                    "Email backend did not accept expiry reminder."
+                                )
+                        except Exception as error:
+                            reminder.last_error = str(error)[:2000]
+                            reminder.save(update_fields=["last_error"])
+                            failures += 1
+                            logger.exception(
+                                "Expiry email failed for kit_lot_id=%s", kit.pk
+                            )
+                        else:
+                            reminder.sent_at = timezone.now()
+                            reminder.save(update_fields=["sent_at"])
+                            expiry_sent += 1
+
+            except Exception:
+                failures += 1
+                logger.exception(
+                    "Could not process expiry reminder for kit_lot_id=%s",
+                    kit.pk,
+                )
+
+            # Low-stock reminder: send when at or below this lot's reorder threshold.
+            if kit.quantity_available <= kit.reorder_threshold:
                 try:
-                    accepted = send_expiry_reminder(kit, recipient)
+                    accepted = send_low_stock_notification(kit, email)
                     if accepted != 1:
-                        raise RuntimeError("The email backend did not accept the expiry reminder.")
-                except Exception as error:
-                    reminder.last_error = str(error)[:2000] or error.__class__.__name__
-                    reminder.save(update_fields=["last_error"])
+                        raise RuntimeError(
+                            "Email backend did not accept low-stock reminder."
+                        )
+                    stock_sent += 1
+                except Exception:
                     failures += 1
                     logger.exception(
-                        "Expiry reminder failed for kit_lot_id=%s owner_user_id=%s attempt=%s.",
-                        kit.pk,
-                        recipient.pk,
-                        reminder.attempt_count,
-                    )
-                    self.stderr.write(
-                        f"Expiry reminder failed for kit_lot_id={kit.pk}, owner user_id={recipient.pk}; it will be retried."
-                    )
-                else:
-                    reminder.sent_at = timezone.now()
-                    reminder.save(update_fields=["sent_at"])
-                    sent_count += 1
-                    logger.info(
-                        "Expiry reminder accepted by email backend for kit_lot_id=%s owner_user_id=%s expiry_date=%s.",
-                        kit.pk,
-                        recipient.pk,
-                        kit.expiry_date,
+                        "Low-stock email failed for kit_lot_id=%s", kit.pk
                     )
 
-        if missing_addresses:
+        self.stdout.write(
+            f"Alert check complete: {expiry_sent} expiry email(s), "
+            f"{stock_sent} low-stock email(s)."
+        )
+
+        if missing_addresses or failures:
             raise CommandError(
-                f"{missing_addresses} kit owner account(s) have no valid email address. Add a valid address to each account and retry."
+                f"{missing_addresses} account(s) missing email addresses; "
+                f"{failures} email processing failure(s). Check logs."
             )
-        if failures:
-            raise CommandError(
-                f"{failures} expiry reminder(s) failed and were not marked as sent; check the log and retry."
-            )
-        self.stdout.write(self.style.SUCCESS(
-            f"Expiry reminder check complete: {sent_count} sent, {len(expiring_kits)} eligible kit lot(s) checked."
-        ))

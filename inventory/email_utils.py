@@ -137,13 +137,14 @@ def notification_email_for_user(user):
 
 def send_low_stock_notification(kit, recipient_email):
     subject = f"Low stock alert: {kit.kit_name} / lot {kit.lot_number}"
+
     message = "\n".join(
         [
-            "A lab kit lot has reached the low-stock threshold.",
+            "A lab kit lot has reached or fallen below its reorder threshold.",
             f"Study name: {kit.kit_name}",
             f"Lot number: {kit.lot_number}",
             f"Available quantity: {kit.quantity_available}",
-            f"Low-stock threshold: {settings.LOW_STOCK_THRESHOLD}",
+            f"Reorder threshold: {kit.reorder_threshold}",
         ]
     )
 
