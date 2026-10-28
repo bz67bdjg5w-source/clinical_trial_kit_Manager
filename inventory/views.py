@@ -146,7 +146,7 @@ def resend_signup_confirmation(request):
 @login_required
 def dashboard(request):
     today = timezone.localdate()
-    soon = today + timedelta(days=90)
+    soon = today + timedelta(days=30)
     kits = KitLot.objects.filter(owner=request.user, active=True)
     expiring = kits.filter(expiry_date__gte=today, expiry_date__lte=soon).order_by("expiry_date")
     expired = kits.filter(expiry_date__lt=today).order_by("expiry_date")
