@@ -1,4 +1,4 @@
-from django.db.models import Count, Q
+
 from datetime import timedelta
 import logging
 import secrets
@@ -12,7 +12,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.mail import BadHeaderError
 from django.db import transaction
-from django.db.models import F
+from django.db.models import Count, Q, F
 from django.http import HttpResponseNotAllowed
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
@@ -72,6 +72,7 @@ def signup(request):
                     request,
                     "We could not send the confirmation email. Please try again later.",
                 )
+
             else:
                 messages.success(
                     request,
@@ -116,6 +117,7 @@ def verify_signup(request, uidb64, token):
     try:
         user_id = force_str(urlsafe_base64_decode(uidb64))
         user = get_user_model()._default_manager.get(pk=user_id)
+
     except (
         TypeError,
         ValueError,
@@ -142,6 +144,7 @@ def verify_signup(request, uidb64, token):
             request,
             "Your email is confirmed. You can now sign in.",
         )
+
         return redirect("login")
 
     messages.error(
@@ -167,19 +170,12 @@ def resend_signup_confirmation(request):
                 is_active=False,
             ).first()
 
-            if user is None:
-                logger.error(
-                    "DEBUG: Confirmation resend skipped; no inactive account found."
-                )
-            else:
+            if user is not None:
                 try:
                     _send_signup_confirmation(request, user)
-                    logger.warning(
-                        "DEBUG: Confirmation email send function completed."
-                    )
                 except Exception:
                     logger.exception(
-                        "DEBUG: Confirmation email sending failed."
+                        "Confirmation email sending failed."
                     )
 
             messages.info(
@@ -200,7 +196,7 @@ def resend_signup_confirmation(request):
 
 
 # --------------------------------------------------
-# DASHBOARD AND STUDIES
+# DASHBOARD
 # --------------------------------------------------
 
 @login_required
@@ -214,6 +210,7 @@ def dashboard(request):
             expired_count=Count(
                 "kit_lots",
                 filter=Q(
+                    kit_lots__owner=request.user,
                     kit_lots__active=True,
                     kit_lots__expiry_date__lt=today,
                 ),
@@ -222,6 +219,7 @@ def dashboard(request):
             expiring_count=Count(
                 "kit_lots",
                 filter=Q(
+                    kit_lots__owner=request.user,
                     kit_lots__active=True,
                     kit_lots__expiry_date__gte=today,
                     kit_lots__expiry_date__lte=cutoff_date,
@@ -240,7 +238,69 @@ def dashboard(request):
 
 
 # --------------------------------------------------
-# LAB KIT INVENTORY
+# STUDIES
+# --------------------------------------------------
+
+@login_required
+def study_create(request):
+    if request.method == "POST":
+        form = StudyForm(request.POST)
+
+        if form.is_valid():
+            study = form.save(commit=False)
+            study.owner = request.user
+            study.save()
+
+            messages.success(
+                request,
+                "Study added successfully.",
+            )
+
+            return redirect("dashboard")
+
+    else:
+        form = StudyForm()
+
+    return render(
+        request,
+        "inventory/form.html",
+        {
+            "form": form,
+            "title": "Add study",
+            "back_url": "dashboard",
+        },
+    )
+
+
+@login_required
+def study_detail(request, pk):
+    study = get_object_or_404(
+        Study,
+        pk=pk,
+        owner=request.user,
+    )
+
+    kits = (
+        KitLot.objects.filter(
+            study=study,
+            owner=request.user,
+            active=True,
+        )
+        .order_by("expiry_date", "kit_name", "lot_number")
+    )
+
+    return render(
+        request,
+        "inventory/study_detail.html",
+        {
+            "study": study,
+            "kits": kits,
+        },
+    )
+
+
+# --------------------------------------------------
+# KIT INVENTORY
 # --------------------------------------------------
 
 @login_required
@@ -250,7 +310,6 @@ def kit_list(request):
             owner=request.user,
             active=True,
         )
-        .select_related("study")
         .order_by("expiry_date")
     )
 
@@ -284,16 +343,22 @@ def kit_create(request, pk):
                 save_kit_lot(
                     kit=kit,
                     actor=request.user,
-                    reason=form.cleaned_data["reason"],
+                    reason="Initial kit lot entry",
                 )
+
             except (PermissionDenied, ValidationError) as error:
                 form.add_error(None, error)
+
             else:
                 messages.success(
                     request,
                     "Kit lot added.",
                 )
-                return redirect("study_detail", pk=study.pk)
+
+                return redirect(
+                    "study_detail",
+                    pk=study.pk,
+                )
 
     else:
         form = KitLotForm()
@@ -304,7 +369,7 @@ def kit_create(request, pk):
         {
             "form": form,
             "title": f"Add lab kit to {study.name}",
-            "back_url": "study_detail",
+            "back_url": "dashboard",
             "study": study,
         },
     )
@@ -313,35 +378,36 @@ def kit_create(request, pk):
 @login_required
 def edit_kit(request, pk):
     kit = get_object_or_404(
-        KitLot.objects.select_related("study"),
+        KitLot,
         pk=pk,
         owner=request.user,
-        study__owner=request.user,
     )
 
     if request.method == "POST":
-        form = KitLotForm(request.POST, instance=kit)
+        form = KitLotForm(
+            request.POST,
+            instance=kit,
+        )
 
         if form.is_valid():
             updated_kit = form.save(commit=False)
-
-            # Keep the kit associated with its original study.
-            updated_kit.owner = request.user
-            updated_kit.study = kit.study
 
             try:
                 save_kit_lot(
                     kit=updated_kit,
                     actor=request.user,
-                    reason=form.cleaned_data["reason"],
+                    reason="Kit lot details updated",
                 )
+
             except (PermissionDenied, ValidationError) as error:
                 form.add_error(None, error)
+
             else:
                 messages.success(
                     request,
                     "Kit lot updated.",
                 )
+
                 return redirect(
                     "study_detail",
                     pk=kit.study_id,
@@ -363,10 +429,9 @@ def edit_kit(request, pk):
 @login_required
 def delete_kit(request, pk):
     kit = get_object_or_404(
-        KitLot.objects.select_related("study"),
+        KitLot,
         pk=pk,
         owner=request.user,
-        study__owner=request.user,
     )
 
     if request.method == "POST":
@@ -378,7 +443,10 @@ def delete_kit(request, pk):
             "Kit lot deleted.",
         )
 
-        return redirect("study_detail", pk=study_id)
+        return redirect(
+            "study_detail",
+            pk=study_id,
+        )
 
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET", "POST"])
@@ -407,6 +475,7 @@ def quick_update_stock(request):
             QUICK_UPDATE_TOKEN_SESSION_KEY,
             "",
         )
+
         submitted_token = request.POST.get(
             "submission_token",
             "",
@@ -423,6 +492,7 @@ def quick_update_stock(request):
                 request,
                 "This stock update was already submitted or has expired. Please try again.",
             )
+
             return redirect("quick_update_stock")
 
         request.session.pop(
@@ -445,17 +515,24 @@ def quick_update_stock(request):
                 )
 
             except (PermissionDenied, ValidationError) as error:
-                form.add_error("quantity_used", error)
+                form.add_error(
+                    "quantity_used",
+                    error,
+                )
 
             else:
                 messages.success(
                     request,
                     "Stock usage recorded.",
                 )
+
                 return redirect("quick_update_stock")
 
     submission_token = secrets.token_urlsafe(32)
-    request.session[QUICK_UPDATE_TOKEN_SESSION_KEY] = submission_token
+
+    request.session[QUICK_UPDATE_TOKEN_SESSION_KEY] = (
+        submission_token
+    )
 
     return render(
         request,
@@ -492,17 +569,20 @@ def send_test_email(request):
             request,
             "Your account does not have an email address. Add one to your account before sending a test email.",
         )
+
         return redirect("dashboard")
 
     configuration_error = email_configuration_error()
 
     if configuration_error:
         messages.error(request, configuration_error)
+
         logger.error(
             "Test email not sent for user_id=%s: %s",
             request.user.pk,
             configuration_error,
         )
+
         return redirect("dashboard")
 
     try:
@@ -513,6 +593,7 @@ def send_test_email(request):
             "Test email failed for user_id=%s",
             request.user.pk,
         )
+
         messages.error(
             request,
             "The test email could not be sent. Check the server log and SMTP settings, then try again.",
@@ -523,6 +604,7 @@ def send_test_email(request):
             "Test email accepted by email backend for user_id=%s",
             request.user.pk,
         )
+
         messages.success(
             request,
             f"Test email accepted by the configured email service for {recipient}. Inbox delivery is not confirmed.",
@@ -538,7 +620,9 @@ def send_test_email(request):
 @login_required
 def stock_history(request):
     changes = (
-        StockChangeHistory.objects.filter(owner=request.user)
+        StockChangeHistory.objects.filter(
+            owner=request.user,
+        )
         .select_related("kit_lot", "changed_by")
     )
 
@@ -550,7 +634,7 @@ def stock_history(request):
 
 
 # --------------------------------------------------
-# PROFILE
+# USER PROFILE
 # --------------------------------------------------
 
 @login_required
@@ -558,17 +642,21 @@ def profile(request):
     today = timezone.localdate()
     kits = KitLot.objects.filter(owner=request.user)
     active_kits = kits.filter(active=True)
+
     expiring_cutoff = today + timedelta(days=30)
 
     statistics = {
         "total_kit_lots": kits.count(),
+
         "low_stock_kit_lots": active_kits.filter(
             quantity_available__lte=F("reorder_threshold")
         ).count(),
+
         "expiring_kit_lots": active_kits.filter(
             expiry_date__gte=today,
             expiry_date__lte=expiring_cutoff,
         ).count(),
+
         "stock_change_count": StockChangeHistory.objects.filter(
             owner=request.user
         ).count(),
