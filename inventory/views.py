@@ -1,4 +1,4 @@
-
+from django.db.models import Count, Q
 from datetime import timedelta
 import logging
 import secrets
@@ -205,73 +205,37 @@ def resend_signup_confirmation(request):
 
 @login_required
 def dashboard(request):
+    today = timezone.localdate()
+    cutoff_date = today + timedelta(days=30)
+
     studies = (
         Study.objects.filter(owner=request.user)
-        .prefetch_related("kit_lots")
+        .annotate(
+            expired_count=Count(
+                "kit_lots",
+                filter=Q(
+                    kit_lots__active=True,
+                    kit_lots__expiry_date__lt=today,
+                ),
+                distinct=True,
+            ),
+            expiring_count=Count(
+                "kit_lots",
+                filter=Q(
+                    kit_lots__active=True,
+                    kit_lots__expiry_date__gte=today,
+                    kit_lots__expiry_date__lte=cutoff_date,
+                ),
+                distinct=True,
+            ),
+        )
+        .order_by("name")
     )
 
     return render(
         request,
         "inventory/dashboard.html",
         {"studies": studies},
-    )
-
-
-@login_required
-def study_create(request):
-    if request.method == "POST":
-        form = StudyForm(request.POST)
-
-        if form.is_valid():
-            study = form.save(commit=False)
-            study.owner = request.user
-            study.save()
-
-            messages.success(
-                request,
-                "Study added successfully.",
-            )
-
-            return redirect("dashboard")
-
-    else:
-        form = StudyForm()
-
-    return render(
-        request,
-        "inventory/form.html",
-        {
-            "form": form,
-            "title": "Add study",
-            "back_url": "dashboard",
-        },
-    )
-
-
-@login_required
-def study_detail(request, pk):
-    study = get_object_or_404(
-        Study,
-        pk=pk,
-        owner=request.user,
-    )
-
-    kits = (
-        KitLot.objects.filter(
-            study=study,
-            owner=request.user,
-            active=True,
-        )
-        .order_by("expiry_date", "kit_name", "lot_number")
-    )
-
-    return render(
-        request,
-        "inventory/study_detail.html",
-        {
-            "study": study,
-            "kits": kits,
-        },
     )
 
 
