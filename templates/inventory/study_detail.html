@@ -1,0 +1,112 @@
+
+{% extends "base.html" %}
+
+{% block title %}{{ study.name }} · Study Kit Tracker{% endblock %}
+
+{% block content %}
+<p><a href="{% url 'dashboard' %}">← Back to dashboard</a></p>
+
+<h1>{{ study.name }}</h1>
+
+{% if study.study_code %}
+<p class="muted">Study code: {{ study.study_code }}</p>
+{% endif %}
+
+{% if study.description %}
+<p>{{ study.description }}</p>
+{% endif %}
+
+<div class="study-heading">
+    <h2>Lab kit inventory</h2>
+    <a class="button-link"
+       href="{% url 'kit_create' study.pk %}">
+        + Add lab kit
+    </a>
+</div>
+
+{% if kits %}
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Lab kit</th>
+                <th>Lot number</th>
+                <th>Expiry date</th>
+                <th>Available</th>
+                <th>Low-stock threshold</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for kit in kits %}
+            <tr>
+                <td>{{ kit.kit_name }}</td>
+                <td>{{ kit.lot_number }}</td>
+                <td>{{ kit.expiry_date }}</td>
+                <td>{{ kit.quantity_available }}</td>
+                <td>{{ kit.reorder_threshold }}</td>
+                <td>
+                    {% if kit.is_expired %}
+                    <span class="pill danger">Expired</span>
+                    {% elif kit.is_low_stock %}
+                    <span class="pill warning">Low stock</span>
+                    {% else %}
+                    <span class="pill">OK</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'edit_kit' kit.pk %}">Edit</a>
+                    |
+                    <a href="{% url 'delete_kit' kit.pk %}">Delete</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card">
+    <h3>No lab kits yet</h3>
+    <p class="muted">
+        Add the lab kits used in this study to start tracking their
+        lot numbers, expiry dates and stock levels.
+    </p>
+    <a class="button-link"
+       href="{% url 'kit_create' study.pk %}">
+        + Add first lab kit
+    </a>
+</div>
+{% endif %}
+
+<style>
+.study-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 20px 0 16px;
+}
+
+.button-link {
+    display: inline-block;
+    padding: 9px 14px;
+    border-radius: 7px;
+    background: #039855;
+    color: white;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.button-link:hover {
+    background: #027a48;
+}
+
+@media (max-width: 480px) {
+    .study-heading {
+        align-items: flex-start;
+    }
+}
+</style>
+{% endblock %}

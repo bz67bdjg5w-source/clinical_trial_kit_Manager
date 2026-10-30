@@ -1,2 +1,92 @@
-{% extends "base.html" %}{% block title %}{{ title }} · Study Kit Tracker{% endblock %}
-{% block content %}<div class="card" style="max-width:700px"><h1>{{ title }}</h1><form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Save</button> <a href="{% url back_url %}">Cancel</a></form></div>{% endblock %}
+
+{% extends "base.html" %}
+
+{% block title %}{{ title }} · Study Kit Tracker{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 700px; margin: 0 auto;">
+    <h1>{{ title }}</h1>
+
+    {% if form.non_field_errors %}
+        <div class="form-errors">
+            {{ form.non_field_errors }}
+        </div>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+
+        {% for field in form %}
+            <div class="form-field">
+                <label for="{{ field.id_for_label }}">
+                    {{ field.label }}
+                    {% if field.field.required %}<span>*</span>{% endif %}
+                </label>
+
+                {{ field }}
+
+                {% if field.help_text %}
+                    <p class="muted">{{ field.help_text }}</p>
+                {% endif %}
+
+                {% for error in field.errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+        <div class="form-actions">
+            <button type="submit">Save</button>
+
+            {% if study %}
+                <a href="{% url 'study_detail' study.pk %}">Cancel</a>
+            {% else %}
+                <a href="{% url back_url %}">Cancel</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<style>
+.form-field {
+    margin-bottom: 18px;
+}
+
+.form-field label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.form-field input:not([type="checkbox"]),
+.form-field select,
+.form-field textarea {
+    width: 100%;
+}
+
+.form-error,
+.form-errors {
+    color: #b42318;
+    margin-top: 6px;
+}
+
+.form-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 24px;
+}
+
+.muted {
+    font-size: 0.9rem;
+    color: #667085;
+}
+</style>
+{% endblock %}
