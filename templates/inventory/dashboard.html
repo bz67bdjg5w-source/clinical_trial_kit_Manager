@@ -18,10 +18,6 @@
 </p>
 {% endif %}
 
-<a class="dashboard-quick-update" href="{% url 'quick_update_stock' %}">
-    Lab Kit Update
-</a>
-
 <div class="study-header">
     <h2>Your Studies</h2>
     <a href="{% url 'study_create' %}" class="add-study-button">
@@ -32,7 +28,7 @@
 {% if studies %}
     <div class="study-grid">
         {% for study in studies %}
-            <a href="{% url 'study_detail' study.pk %}" class="study-card">
+            <div class="study-card">
 
                 <div class="study-info">
                     <h3>{{ study.name }}</h3>
@@ -44,6 +40,11 @@
                     <p class="muted">
                         {{ study.kit_lots.count }} kit lots
                     </p>
+
+                    <a href="{% url 'study_detail' study.pk %}"
+                       class="view-study">
+                        View study →
+                    </a>
                 </div>
 
                 <div class="study-expiry-status">
@@ -66,10 +67,14 @@
                         </span>
                     {% endif %}
 
-                    <span class="view-study">View study →</span>
+                    <a href="{% url 'quick_update_stock' %}?study={{ study.pk }}"
+                       class="study-update-button">
+                        Update Lab Kit
+                    </a>
+
                 </div>
 
-            </a>
+            </div>
         {% endfor %}
     </div>
 {% else %}
@@ -103,8 +108,6 @@
     background: white;
     border: 1px solid #e4e7ec;
     border-radius: 12px;
-    text-decoration: none;
-    color: inherit;
     transition: box-shadow 0.2s;
 }
 
@@ -153,8 +156,15 @@
 }
 
 .view-study {
+    display: inline-block;
+    margin-top: 8px;
     color: #667085;
     font-size: 13px;
+    text-decoration: none;
+}
+
+.view-study:hover {
+    text-decoration: underline;
 }
 
 .add-study-button {
@@ -167,16 +177,21 @@
     white-space: nowrap;
 }
 
-.dashboard-quick-update {
-    display: block;
-    text-align: center;
-    padding: 12px;
-    margin: 16px 0;
+.study-update-button {
+    display: inline-block;
+    padding: 10px 14px;
     background: #039855;
     color: white;
-    border-radius: 8px;
+    border-radius: 7px;
     text-decoration: none;
+    font-size: 13px;
     font-weight: 600;
+    white-space: nowrap;
+}
+
+.study-update-button:hover,
+.add-study-button:hover {
+    background: #027a45;
 }
 
 @media (max-width: 600px) {
