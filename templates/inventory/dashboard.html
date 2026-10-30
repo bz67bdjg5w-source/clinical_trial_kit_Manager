@@ -1,49 +1,199 @@
-{% extends "base.html" %}{% block title %}Dashboard · Study Kit Tracker{% endblock %}
+
+{% extends "base.html" %}
+
+{% block title %}Dashboard · Study Kit Tracker{% endblock %}
+
 {% block content %}
-<h1>Dashboard</h1><p class="muted">Overview of inventory risks.</p>
-{% if perms.inventory.can_manage_inventory %}<form method="post" action="{% url 'send_test_email' %}">{% csrf_token %}<button type="submit">Send one-time test email</button></form><p class="muted">Daily expiry reminders run automatically when the scheduler is installed. This button only tests your email settings.</p>{% endif %}
-<div class="grid">
-<div class="card"><div class="muted">Expired lots</div><div class="metric">{{ expired|length }}</div><span class="pill danger">Review immediately</span></div>
-<div class="card"><div class="muted">Lots expiring in 90 days</div><div class="metric">{{ expiring|length }}</div><span class="pill warning">Plan replacement</span></div>
-<div class="card"><div class="muted">Low-stock lots</div><div class="metric">{{ low_stock|length }}</div><span class="pill warning">Check reorder</span></div>
-</div>
-<a class="dashboard-quick-update" href="{% url 'quick_update_stock' %}" aria-label="Open Lab Kit Update">
-  <svg width="20" height="20" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
-    <rect x="1" y="1" width="7" height="7" rx="1" fill="currentColor"/>
-    <rect x="10" y="1" width="7" height="7" rx="1" fill="currentColor"/>
-    <rect x="1" y="10" width="7" height="7" rx="1" fill="currentColor"/>
-    <rect x="10" y="10" width="7" height="7" rx="1" fill="currentColor"/>
-  </svg>
-  <span>Lab Kit Update</span>
+
+<h1>Dashboard</h1>
+<p class="muted">Manage your studies and monitor kit expiry dates.</p>
+
+{% if perms.inventory.can_manage_inventory %}
+<form method="post" action="{% url 'send_test_email' %}">
+    {% csrf_token %}
+    <button type="submit">Send one-time test email</button>
+</form>
+<p class="muted">
+    Daily expiry reminders run automatically when the scheduler is installed.
+</p>
+{% endif %}
+
+<a class="dashboard-quick-update" href="{% url 'quick_update_stock' %}">
+    Lab Kit Update
 </a>
+
+<div class="study-header">
+    <h2>Your Studies</h2>
+    <a href="{% url 'study_create' %}" class="add-study-button">
+        + Add Study
+    </a>
+</div>
+
+{% if studies %}
+    <div class="study-grid">
+        {% for study in studies %}
+            <a href="{% url 'study_detail' study.pk %}" class="study-card">
+
+                <div class="study-info">
+                    <h3>{{ study.name }}</h3>
+
+                    {% if study.study_code %}
+                        <p class="muted">Study code: {{ study.study_code }}</p>
+                    {% endif %}
+
+                    <p class="muted">
+                        {{ study.kit_lots.count }} kit lots
+                    </p>
+                </div>
+
+                <div class="study-expiry-status">
+
+                    {% if study.expired_count > 0 %}
+                        <span class="expiry-badge danger">
+                            {{ study.expired_count }} expired kit{{ study.expired_count|pluralize }}
+                        </span>
+                    {% endif %}
+
+                    {% if study.expiring_count > 0 %}
+                        <span class="expiry-badge warning">
+                            {{ study.expiring_count }} expiring within 30 days
+                        </span>
+                    {% endif %}
+
+                    {% if study.expired_count == 0 and study.expiring_count == 0 %}
+                        <span class="expiry-badge success">
+                            No expiry concerns
+                        </span>
+                    {% endif %}
+
+                    <span class="view-study">View study →</span>
+                </div>
+
+            </a>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="card">
+        <p>You haven't added any studies yet.</p>
+        <a href="{% url 'study_create' %}">Add your first study</a>
+    </div>
+{% endif %}
+
 <style>
-  .dashboard-quick-update {
-    min-height: 42px;
-    width: 100%;
-    box-sizing: border-box;
-    margin: 0 0 16px;
-    padding: 8px 16px;
+.study-header {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    justify-content: center;
-    gap: 10px;
-    border-radius: 8px;
+    gap: 12px;
+    margin: 24px 0 16px;
+}
+
+.study-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.study-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    background: white;
+    border: 1px solid #e4e7ec;
+    border-radius: 12px;
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow 0.2s;
+}
+
+.study-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.study-info h3 {
+    margin: 0 0 8px;
+}
+
+.study-info p {
+    margin: 4px 0;
+}
+
+.study-expiry-status {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.expiry-badge {
+    display: inline-block;
+    padding: 7px 11px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.expiry-badge.danger {
+    background: #fee4e2;
+    color: #b42318;
+}
+
+.expiry-badge.warning {
+    background: #fef0c7;
+    color: #93370d;
+}
+
+.expiry-badge.success {
+    background: #dcfae6;
+    color: #067647;
+}
+
+.view-study {
+    color: #667085;
+    font-size: 13px;
+}
+
+.add-study-button {
+    padding: 9px 14px;
     background: #039855;
     color: white;
-    font-weight: 600;
+    border-radius: 7px;
     text-decoration: none;
-  }
-  .dashboard-quick-update:hover { background: #027a48; }
-  .dashboard-quick-update:focus-visible {
-    outline: 3px solid #84caff;
-    outline-offset: 3px;
-  }
-  @media (max-width: 480px) {
-    .dashboard-quick-update { min-height: 44px; }
-  }
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.dashboard-quick-update {
+    display: block;
+    text-align: center;
+    padding: 12px;
+    margin: 16px 0;
+    background: #039855;
+    color: white;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+@media (max-width: 600px) {
+    .study-card {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .study-expiry-status {
+        align-items: flex-start;
+        text-align: left;
+    }
+
+    .study-header {
+        align-items: flex-start;
+    }
+}
 </style>
-<div class="card"><h2>Expiring lots</h2>{% if expiring or expired %}<div class="table-wrap"><table><tr><th>Study name</th><th>Lot</th><th>Expiry</th><th>Quantity</th><th>Days left</th></tr>
-{% for k in expired %}<tr><td>{{ k.kit_name }} <a href="{% url 'edit_kit' k.pk %}">Edit</a></td><td>{{ k.lot_number }}</td><td>{{ k.expiry_date }}</td><td>{{ k.quantity_available }}</td><td><span class="pill danger">Expired</span></td></tr>{% endfor %}
-{% for k in expiring %}<tr><td>{{ k.kit_name }} <a href="{% url 'edit_kit' k.pk %}">Edit</a></td><td>{{ k.lot_number }}</td><td>{{ k.expiry_date }}</td><td>{{ k.quantity_available }}</td><td><span class="pill warning">{{ k.days_to_expiry }} days</span></td></tr>{% endfor %}</table></div>{% else %}<p class="muted">No expiry alerts.</p>{% endif %}</div>
-<div class="card"><h2>Low stock</h2><p class="muted">Low stock means {{ low_stock_threshold }} or fewer kits available.</p>{% if low_stock %}<div class="table-wrap"><table><tr><th>Study name</th><th>Lot</th><th>Available</th></tr>{% for k in low_stock %}<tr><td>{{ k.kit_name }}{% if perms.inventory.can_manage_inventory %} <a href="{% url 'edit_kit' k.pk %}">Edit</a>{% endif %}</td><td>{{ k.lot_number }}</td><td>{{ k.quantity_available }}</td></tr>{% endfor %}</table></div>{% else %}<p class="muted">No low-stock alerts.</p>{% endif %}</div>
+
 {% endblock %}
