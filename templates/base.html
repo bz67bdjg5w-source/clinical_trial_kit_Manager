@@ -1,37 +1,164 @@
+
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Study Kit Tracker{% endblock %}</title>
   <style>
-    :root { font-family: Inter, system-ui, Arial, sans-serif; color:#1d2939; background:#f5f7fb; }
-    body { margin:0; } header { background:#16324f; color:white; padding:16px 24px; display:flex; justify-content:space-between; gap:16px; align-items:center; flex-wrap:wrap; }
-    header a { color:white; text-decoration:none; }
-    header nav { display:flex; align-items:center; flex-wrap:wrap; gap:12px; }
-    header nav .separator { line-height:1; }
-    main { max-width:1100px; margin:24px auto; padding:0 16px 36px; }
-    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; }
-    .card { background:white; border:1px solid #e1e7ef; border-radius:14px; padding:18px; margin-bottom:16px; }
-    .metric { font-size:28px; font-weight:700; margin:8px 0; } .muted { color:#667085; font-size:14px; }
-    table { width:100%; border-collapse:collapse; background:white; } th,td { text-align:left; padding:10px; border-bottom:1px solid #e8edf3; font-size:14px; }
-    th { color:#475467; background:#f8fafc; } .pill { display:inline-block; border-radius:99px; padding:4px 9px; font-size:12px; background:#eef2f6; }
-    .danger { background:#fee4e2; color:#b42318; } .warning { background:#fff0c2; color:#854a0e; } .ok { background:#d1fadf; color:#05603a; }
-    a.button, button { background:#175cd3; color:white; padding:9px 13px; border-radius:8px; border:0; text-decoration:none; cursor:pointer; display:inline-block; }
-    input,select,textarea { padding:9px; border:1px solid #cfd8e3; border-radius:7px; width:100%; box-sizing:border-box; margin:5px 0 12px; }
-    label { font-size:14px; font-weight:600; } .messages { padding:10px 14px; background:#ecfdf3; border-radius:8px; }
-    .table-wrap { overflow-x:auto; } footer { color:#667085; font-size:12px; padding:20px 0; }
+    :root {
+      font-family: Inter, system-ui, Arial, sans-serif;
+      color: #1d2939;
+      background: #f5f7fb;
+    }
+
+    body { margin: 0; }
+
+    header {
+      background: #16324f;
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    header a {
+      color: white;
+      text-decoration: none;
+    }
+
+    header nav {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 24px auto;
+      padding: 0 16px 36px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid #e1e7ef;
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+
+    .metric {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 8px 0;
+    }
+
+    .muted { color: #667085; font-size: 14px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 10px;
+      border-bottom: 1px solid #e8edf3;
+      font-size: 14px;
+    }
+
+    th { color: #475467; background: #f8fafc; }
+
+    .pill {
+      display: inline-block;
+      border-radius: 99px;
+      padding: 4px 9px;
+      font-size: 12px;
+      background: #eef2f6;
+    }
+
+    .danger { background: #fee4e2; color: #b42318; }
+    .warning { background: #fff0c2; color: #854a0e; }
+    .ok { background: #d1fadf; color: #05603a; }
+
+    a.button, button {
+      background: #175cd3;
+      color: white;
+      padding: 9px 13px;
+      border-radius: 8px;
+      border: 0;
+      text-decoration: none;
+      cursor: pointer;
+      display: inline-block;
+    }
+
+    input, select, textarea {
+      padding: 9px;
+      border: 1px solid #cfd8e3;
+      border-radius: 7px;
+      width: 100%;
+      box-sizing: border-box;
+      margin: 5px 0 12px;
+    }
+
+    label { font-size: 14px; font-weight: 600; }
+
+    .messages {
+      padding: 10px 14px;
+      background: #ecfdf3;
+      border-radius: 8px;
+    }
+
+    .table-wrap { overflow-x: auto; }
+
+    footer {
+      color: #667085;
+      font-size: 12px;
+      padding: 20px 0;
+    }
   </style>
 </head>
+
 <body>
 <header>
   <div><strong>Study Kit Tracker</strong></div>
+
   {% if request.user.is_authenticated %}
-  <nav><a href="/">Dashboard</a><span class="separator" aria-hidden="true">|</span><a href="/kits/">Kit Inventory</a><span class="separator" aria-hidden="true">|</span><a href="{% url 'stock_history' %}">Stock History</a><span class="separator" aria-hidden="true">|</span><a href="{% url 'profile' %}">My Profile</a></nav>
+  <nav>
+    <a href="/">Dashboard</a>
+    <span>|</span>
+    <a href="{% url 'stock_history' %}">Stock History</a>
+    <span>|</span>
+    <a href="{% url 'profile' %}">My Profile</a>
+  </nav>
   {% endif %}
 </header>
+
 <main>
-  {% if messages %}<div class="messages">{% for message in messages %}{{ message }}{% endfor %}</div>{% endif %}
+  {% if messages %}
+    <div class="messages">
+      {% for message in messages %}
+        {{ message }}
+      {% endfor %}
+    </div>
+  {% endif %}
+
   {% block content %}{% endblock %}
-  <footer>Dummy data only · Not a source of truth for clinical decisions or IP accountability.</footer>
+
+  <footer>
+    Dummy data only · Not a source of truth for clinical decisions or IP accountability.
+  </footer>
 </main>
-</body></html>
+</body>
+</html>
