@@ -36,7 +36,6 @@ urlpatterns = [
     path("studies/<int:pk>/", views.study_detail, name="study_detail"),
 
     # Lab kit inventory
-    path("kits/", views.kit_list, name="kit_list"),
     path(
         "kits/quick-update/",
         views.quick_update_stock,
