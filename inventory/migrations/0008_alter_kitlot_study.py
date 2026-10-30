@@ -1,6 +1,5 @@
 
-from django.db import migrations, models
-import django.db.models.deletion
+from django.db import migrations
 
 
 def assign_existing_kit_lots_to_studies(apps, schema_editor):
@@ -41,14 +40,5 @@ class Migration(migrations.Migration):
         migrations.RunPython(
             assign_existing_kit_lots_to_studies,
             reverse_code=migrations.RunPython.noop,
-        ),
-        migrations.AlterField(
-            model_name="kitlot",
-            name="study",
-            field=models.ForeignKey(
-                on_delete=django.db.models.deletion.CASCADE,
-                related_name="kit_lots",
-                to="inventory.study",
-            ),
         ),
     ]
