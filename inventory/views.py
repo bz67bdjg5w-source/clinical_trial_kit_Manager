@@ -303,6 +303,7 @@ def study_detail(request, pk):
 # KIT INVENTORY
 # --------------------------------------------------
 
+
 @login_required
 def kit_list(request):
     kits = (
@@ -318,7 +319,11 @@ def kit_list(request):
         "inventory/kit_list.html",
         {
             "kits": kits,
-            "low_stock_threshold": settings.LOW_STOCK_THRESHOLD,
+            "low_stock_threshold": getattr(
+                settings,
+                "LOW_STOCK_THRESHOLD",
+                5,
+            ),
         },
     )
 
